@@ -31,23 +31,26 @@ serves the page only — expect the server-unreachable banner there.
 
 ## Team sync rules (Matt + Pete)
 
-We both push directly to main. Every push to main deploys live on Netlify.
+We both push directly to main. Every push to main deploys live on
+Netlify, and each deploy costs credits, so push when a change is
+finished and tested, not after every small edit. Commit locally as
+often as you like; commits are free.
 
 Before making any changes:
 1. Run `git fetch` and `git status`.
-2. If the branch is behind origin, show me what changed
-   (`git log HEAD..@{u} --oneline`) and who pushed it, then `git pull`
-   before doing anything else.
+2. If behind origin, show me what changed (`git log HEAD..@{u} --oneline`)
+   and who pushed it, then `git pull` before doing anything else.
 3. If there are uncommitted local changes AND new commits on GitHub,
    stop and ask me.
 
 Before pushing:
-1. Run `git fetch` again.
-2. If someone pushed while I was working, pull first, check that the
-   app still runs, then push.
-3. If the pull causes a merge conflict, stop and explain it in plain
+1. Run `git fetch` again. If someone pushed while I was working, pull
+   first and check the app still runs.
+2. If the pull causes a merge conflict, stop and explain it in plain
    English before resolving anything.
-4. Run the app locally and confirm it works before pushing to main.
+3. Run the app locally and confirm it works.
+4. If the change is docs-only (README, CLAUDE.md, comments), add
+   [skip netlify] to the commit message so it doesn't trigger a deploy.
 
 After pushing:
 - Confirm the push succeeded. No summary needed unless I ask.
