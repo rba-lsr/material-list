@@ -1,0 +1,4 @@
+# The deployable app lives in pwa-app/. Pointing Netlify's base there makes it
+# read pwa-app/netlify.toml (publish dir + functions) and install pwa-app/package.json.
+[build]
+  base = "pwa-app"
