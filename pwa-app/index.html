@@ -1205,9 +1205,15 @@
     }
 
     // Jobs API
+    // True after a /api/jobs fetch fails while the device is online — i.e. the
+    // server (not the connection) is the problem, and the list being shown is
+    // this device's cached copy, not the team's. Surfaced in the UI so a broken
+    // deploy can't masquerade as "Connected" with stale jobs.
+    let jobsServerDown = false;
     async function fetchJobsFromAPI() {
       try {
         let jobs = await apiRequest("/api/jobs");
+        jobsServerDown = false;
         if (!Array.isArray(jobs)) jobs = [];
         // Pending local edits (offline saves or in-flight posts) are newer than
         // the server copy — overlay them so a fetch can't clobber unsynced work
@@ -1223,6 +1229,7 @@
         localStorage.setItem("cutlist_jobs", JSON.stringify(jobs.slice(0, 50)));
         return jobs;
       } catch {
+        jobsServerDown = navigator.onLine;
         return loadSavedJobs(); // offline fallback
       }
     }
@@ -4207,6 +4214,7 @@
       const [customMode, setCustomMode] = useState({}); // tracks which fields are in "type custom" mode
       const [jambSpeciesManuallySet, setJambSpeciesManuallySet] = useState(false);
       const [isOnline, setIsOnline] = useState(navigator.onLine);
+      const [serverDown, setServerDown] = useState(false); // online but /api/jobs failing
       const [syncing, setSyncing] = useState(false);
       const [boardCalcKey, setBoardCalcKey] = useState(0); // bump to force board recalculation
       const [recalculating, setRecalculating] = useState(false);
@@ -4271,6 +4279,7 @@
             const jobs = await fetchJobsFromAPI();
             setSavedJobs(jobs);
           }
+          setServerDown(jobsServerDown);
           setSyncing(false);
         };
         const goOffline = () => setIsOnline(false);
@@ -4338,6 +4347,7 @@
         (async () => {
           const jobs = await fetchJobsFromAPI();
           setSavedJobs(jobs);
+          setServerDown(jobsServerDown);
         })();
       }, [view]);
 
@@ -4802,8 +4812,8 @@
                 <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.45)", letterSpacing: 1.5, textTransform: "uppercase", marginTop: 4 }}>Material Cut List</div>
                 <div style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", marginTop: 8 }}>v2.2 — Apr 8 2026</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 6 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: isOnline ? "#6DB344" : "#f39c12", boxShadow: isOnline ? "0 0 6px rgba(109,179,68,0.5)" : "0 0 6px rgba(243,156,18,0.5)" }} />
-                  <span style={{ fontSize: 10, color: isOnline ? "rgba(109,179,68,0.7)" : "rgba(243,156,18,0.7)" }}>{syncing ? "Syncing..." : isOnline ? "Connected" : "Offline"}</span>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: isOnline && !serverDown ? "#6DB344" : "#f39c12", boxShadow: isOnline && !serverDown ? "0 0 6px rgba(109,179,68,0.5)" : "0 0 6px rgba(243,156,18,0.5)" }} />
+                  <span style={{ fontSize: 10, color: isOnline && !serverDown ? "rgba(109,179,68,0.7)" : "rgba(243,156,18,0.7)" }}>{syncing ? "Syncing..." : !isOnline ? "Offline" : serverDown ? "Server unreachable — showing this device's copy" : "Connected"}</span>
                 </div>
               </div>
 
@@ -5754,6 +5764,12 @@
               </div>
               )}
 
+              {serverDown && (
+                <div style={{ background: "#FDF0E3", border: "2px solid #e67e22", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#1a1a1a" }}>
+                  <div style={{ fontWeight: 800 }}>Can't reach the job server</div>
+                  <div style={{ color: "#555", marginTop: 2 }}>Showing only the jobs saved on this device. The team's jobs are safe on the server and will appear once it's back. Don't clear Safari data.</div>
+                </div>
+              )}
               {/* Job list — Quick View */}
               {filteredJobs.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 40, color: "#999" }}>
