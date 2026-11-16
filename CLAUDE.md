@@ -31,6 +31,17 @@ serves the page only — expect the server-unreachable banner there.
 
 ## Team sync rules (Matt + Pete)
 
+Automatic at session start: `.claude/hooks/session-sync.sh` checks GitHub when
+a session opens here and pulls the other person's finished work when that is
+safe. Its report is the first thing in the session. Tell me what it pulled
+before doing anything else, and if it says STOP, stop and ask me. This replaces
+step 1 and 2 of "Before making any changes" below; the rest still applies.
+
+Where knowledge goes: facts about this app go in this file (or the notes it
+points to), in the same commit as the change. Facts that apply to every app go
+in `docs/canon/` or `docs/WORKING-TOGETHER.md` in rba-command-center. Nothing
+that both Claudes need stays in one person's Claude memory.
+
 We both push directly to main. Every push to main deploys live on
 Netlify, and each deploy costs credits, so push when a change is
 finished and tested, not after every small edit. Commit locally as

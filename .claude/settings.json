@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-sync.sh\"",
+            "timeout": 45,
+            "statusMessage": "Checking GitHub for new changes"
+          }
+        ]
+      }
+    ]
+  }
+}
