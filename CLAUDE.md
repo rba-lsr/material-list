@@ -15,9 +15,15 @@ PDFs, and the Truck Report. Used daily by the field and the warehouse.
   (`/api/packages?q=`) searches the installer / TechMapp packages the joblist
   has filed from email (its `package-search` function) so "Find Package" in
   the editor loads one without a manual upload. Upload File is the fallback
-  (offline, or a package not filed yet). Never delete a
-  store or "reset" the site — there is no other copy. To inspect:
+  (offline, or a package not filed yet). `?job=<joblist job id>` returns one
+  job's package: the Truck Report's "Start from package" on a job with no
+  list. Results flag jobs that already have a material list on file. Never
+  delete a store or "reset" the site — there is no other copy. To inspect:
   `NETLIFY_SITE_ID=f979f1d5-307f-412d-a7ca-fd97486444dc netlify blobs:list jobs --json`.
+- Combination units ("101A" + "101B") import as one opening when the layout
+  is unambiguous: equal heights add widths, equal widths add heights, with no
+  allowance for the mull joint. The review screen has a checkbox to keep them
+  separate. Anything else stays as separate units.
 - Netlify site `rba-material-list` → https://rbamateriallist.com, deploys every
   push to `main`. The root `netlify.toml` sets `base = "pwa-app"` so Netlify
   reads `pwa-app/netlify.toml` (publish `.`, functions). **Keep it.** On
@@ -27,6 +33,19 @@ PDFs, and the Truck Report. Used daily by the field and the warehouse.
   "Connected"; check the deploy summary for "No functions deployed" if it
   ever shows up again.
 - Repo: github.com/rba-lsr/material-list.
+
+## Open reminders
+- **Move package filing off Matt's Mac (asked 2026-11-19).** Packages reach
+  the joblist through an Apple Mail rule on Matt's Mac, so nothing is filed
+  while that Mac is asleep or Mail is closed, and Find Package can't see it.
+  Goal: a server that receives anything sent from tech@northlandrba.com and
+  files it instantly through the joblist's existing intake. The work is in
+  rba-joblist; there is a matching idea card on the joblist in the Command
+  Center. Raise this with Matt when working on imports or Find Package.
+- **`/api/packages` has no login (2026-11-19).** Like the app's other
+  endpoints, anyone with the address can search packages and get short-lived
+  links to PDFs that hold customer addresses and phone numbers. Waiting on
+  Matt's choice of how to lock it.
 
 ## Run locally
 `cd pwa-app && netlify dev` serves the page AND the functions (local blob

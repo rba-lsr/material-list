@@ -1129,6 +1129,47 @@
       };
     }
 
+    // Combination units come through as one line per part ("101A", "101B") but
+    // are mulled into a single opening that is trimmed once. Merge a group only
+    // when the layout is unambiguous: equal heights = side by side (widths add),
+    // equal widths = stacked (heights add). Anything else is left as separate
+    // units for the tech to sort out. No allowance is added for the mull joint.
+    function combineComboUnits(units) {
+      const groups = new Map();
+      units.forEach(u => {
+        const m = /^(\d{3})[A-RT-Za-rt-z]$/.exec(String(u.label || "").trim());
+        if (m) groups.set(m[1], [...(groups.get(m[1]) || []), u]);
+      });
+      const out = [];
+      const done = new Set();
+      units.forEach(u => {
+        const m = /^(\d{3})[A-RT-Za-rt-z]$/.exec(String(u.label || "").trim());
+        const g = m ? groups.get(m[1]) : null;
+        if (!g || g.length < 2) { out.push(u); return; }
+        if (done.has(m[1])) return;
+        done.add(m[1]);
+        const ws = g.map(x => combineMeasurement(x.widthWhole, x.widthFrac));
+        const hs = g.map(x => combineMeasurement(x.heightWhole, x.heightFrac));
+        const same = (a) => Math.max(...a) - Math.min(...a) <= 0.25;
+        const sum = (a) => a.reduce((t, v) => t + v, 0);
+        let w, h;
+        if (same(hs)) { w = sum(ws); h = Math.max(...hs); }
+        else if (same(ws)) { w = Math.max(...ws); h = sum(hs); }
+        else { out.push(...g); return; }
+        const jd = g.find(x => x.jambDepthWhole != null);
+        out.push({
+          ...g[0],
+          label: m[1],
+          unitType: g.some(x => x.unitType === "Patio Door") ? "Patio Door" : g.some(x => x.unitType === "Entry Door") ? "Entry Door" : "Window",
+          widthWhole: Math.floor(w), widthFrac: w - Math.floor(w),
+          heightWhole: Math.floor(h), heightFrac: h - Math.floor(h),
+          jambDepthWhole: jd ? jd.jambDepthWhole : null, jambDepthFrac: jd ? jd.jambDepthFrac : null,
+          combinedFrom: g.map(x => x.label).join(" + "),
+        });
+      });
+      return out;
+    }
+
     // Storm doors carry a trailing "S" on their unit ID (e.g. "101S") and need no trim.
     function isStormDoor(u) {
       return /^\s*\d+\s*[Ss]\s*$/.test(String(u?.label ?? ""));
@@ -4470,6 +4511,22 @@
         }
       };
 
+      // Truck Report: a job with no material list — open a new job from the
+      // package the joblist has on file for it.
+      const startFromPackage = async (tj) => {
+        try {
+          const res = await fetch("/api/packages?" + new URLSearchParams({ job: tj.id }), { cache: "no-store" });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data || !data.ok) throw new Error((data && data.error) || "HTTP " + res.status);
+          const pkg = (data.packages || [])[0];
+          if (!pkg) { alert("No installer package is on file for " + (tj.customerName || "this job") + " yet."); return; }
+          if (!startNewJob()) return;
+          await loadPackage(pkg);
+        } catch (err) {
+          alert("Couldn't look up the package (" + (err.message || err) + ").");
+        }
+      };
+
       const importFile = async (file) => {
         if (!file) return;
 
@@ -4564,7 +4621,9 @@
             setPdfParsing(false);
             return;
           }
-          setPdfPreview({ jobInfo: data.jobInfo || {}, units: data.units });
+          const combined = combineComboUnits(data.units);
+          const hasCombos = combined.length !== data.units.length;
+          setPdfPreview({ jobInfo: data.jobInfo || {}, units: hasCombos ? combined : data.units, splitUnits: hasCombos ? data.units : null, combinedUnits: hasCombos ? combined : null });
         } catch (err) {
           alert("Upload error: " + (err.message || String(err)));
           console.error("Upload error:", err);
@@ -6031,6 +6090,9 @@
                             <button onClick={() => runBatch([{ tj, saved: null }], { askMark: false })} disabled={!!truckBatch} style={{ padding: "9px 16px", borderRadius: 6, border: "none", background: "#3b7dd8", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Open Joblist PDF</button>
                           )}
                           {status === "missing" && (
+                            <button onClick={() => startFromPackage(tj)} disabled={pdfParsing} style={{ padding: "9px 16px", borderRadius: 6, border: "none", background: "#6DB344", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{pdfParsing ? "Loading…" : "Start from package"}</button>
+                          )}
+                          {status === "missing" && (
                             <span style={{ fontSize: 13, fontWeight: 700, color: "#c0392b", alignSelf: "center" }}>No material list from the tech measure — find out if it was made on paper or never done.</span>
                           )}
                           {(saved || tj.joblistList) && (
@@ -6145,6 +6207,7 @@
                           <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
                             {[p.poNumber, p.customerName ? p.name : "", "filed " + new Date(p.uploadedAt).toLocaleDateString(), p.matched ? "" : "not yet matched to a job"].filter(Boolean).join(" · ")}
                           </div>
+                          {p.hasList && <div style={{ fontSize: 12, fontWeight: 700, color: "#B45309", marginTop: 2 }}>Material list already on file for this job</div>}
                         </button>
                       ))}
                     </div>
@@ -7494,6 +7557,14 @@
                   }}>✕</button>
                 </div>
                 <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
+                  {pdfPreview.splitUnits && (
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 10, cursor: "pointer" }}>
+                      <input type="checkbox" checked={pdfPreview.units === pdfPreview.combinedUnits}
+                        onChange={e => setPdfPreview(p => ({ ...p, units: e.target.checked ? p.combinedUnits : p.splitUnits }))}
+                        style={{ width: 18, height: 18, accentColor: "#6DB344" }} />
+                      Trim combination units as one opening
+                    </label>
+                  )}
                   {pdfPreview.units.map((u, i) => (
                     <div key={i} style={{
                       padding: "10px 12px", marginBottom: 8, borderRadius: 10,
@@ -7515,6 +7586,11 @@
                         <span>H: <b>{u.heightWhole || 0}{fracSuffix(u.heightFrac)}"</b></span>
                         {u.jambDepthWhole != null ? <span>Jamb: <b>{u.jambDepthWhole}{fracSuffix(u.jambDepthFrac)}"</b></span> : null}
                       </div>
+                      {u.combinedFrom && (
+                        <div style={{ fontSize: 12, color: "#B45309", marginTop: 6, fontWeight: 600 }}>
+                          Combination unit: {u.combinedFrom} joined into one opening. Check the overall size.
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

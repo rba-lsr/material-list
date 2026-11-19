@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cutlist-pro-v9';
+const CACHE_NAME = 'cutlist-pro-v10';
 const ASSETS = [
   '/',
   '/index.html',
@@ -37,6 +37,11 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(event.request));
     return;
   }
+
+  // Signed joblist file links (installer packages, material-list PDFs) are
+  // different on every request and hold customer details — let them go
+  // straight to the network instead of piling up in the offline cache.
+  if (url.pathname.includes('/storage/v1/object/')) return;
 
   // Network-first for the HTML page so updates always show immediately
   const isNavigation = event.request.mode === 'navigate' ||

@@ -14,9 +14,11 @@ export default async (req: Request, context: Context) => {
     return new Response(JSON.stringify({ ok: false, configured: false, error: "Joblist not connected" }), { status: 503 });
   }
   const feed = process.env.JOBLIST_PACKAGES_URL || base.replace(/material-list\/?$/, "package-search");
-  const q = (new URL(req.url).searchParams.get("q") || "").slice(0, 60);
+  const params = new URL(req.url).searchParams;
+  const job = params.get("job") || "";   // one joblist job's package (Truck Report)
+  const q = (params.get("q") || "").slice(0, 60);
   try {
-    const upstream = await fetch(feed + "?" + new URLSearchParams({ q }), {
+    const upstream = await fetch(feed + "?" + new URLSearchParams(job ? { job } : { q }), {
       headers: { Authorization: `Bearer ${key}` },
     });
     const text = await upstream.text();
