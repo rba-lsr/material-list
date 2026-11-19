@@ -11,7 +11,11 @@ PDFs, and the Truck Report. Used daily by the field and the warehouse.
   `jobs` (every saved and submitted job), `catalog` (Available Material),
   `offsets`. Served by `pwa-app/netlify/functions/*.mts` as `/api/jobs`,
   `/api/catalog`, `/api/offsets`; `push-to-joblist` sends the PDF + linear-feet
-  data to rba-joblist; `truck-report` reads arrivals from it. Never delete a
+  data to rba-joblist; `truck-report` reads arrivals from it; `packages`
+  (`/api/packages?q=`) searches the installer / TechMapp packages the joblist
+  has filed from email (its `package-search` function) so "Find Package" in
+  the editor loads one without a manual upload. Upload File is the fallback
+  (offline, or a package not filed yet). Never delete a
   store or "reset" the site — there is no other copy. To inspect:
   `NETLIFY_SITE_ID=f979f1d5-307f-412d-a7ca-fd97486444dc netlify blobs:list jobs --json`.
 - Netlify site `rba-material-list` → https://rbamateriallist.com, deploys every

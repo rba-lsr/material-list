@@ -4210,6 +4210,7 @@
       const [savedJobs, setSavedJobs] = useState([]);
       const [pdfParsing, setPdfParsing] = useState(false);
       const [pdfPreview, setPdfPreview] = useState(null); // { jobInfo, units } for review
+      const [pkgSearch, setPkgSearch] = useState(null); // Find Package panel: { q, loading, error, results } or null when closed
       const [catalog, setCatalog] = useState(loadCatalog);
       const [offsets, setOffsetsState] = useState(loadOffsets);
       const [customMode, setCustomMode] = useState({}); // tracks which fields are in "type custom" mode
@@ -4439,8 +4440,37 @@
       };
 
       // ─── FILE UPLOAD & PARSE (JSON or PDF) ───
-      const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
+      const handleFileUpload = (e) => importFile(e.target.files[0]);
+
+      // ─── FIND PACKAGE ON FILE ───
+      // The joblist files every emailed installer / TechMapp package. Search it
+      // by customer or PO and load the PDF straight through the same import.
+      const searchPackages = async (q) => {
+        setPkgSearch({ q, loading: true, error: "", results: null });
+        try {
+          const res = await fetch("/api/packages?" + new URLSearchParams({ q }), { cache: "no-store" });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data || !data.ok) throw new Error((data && data.error) || "HTTP " + res.status);
+          setPkgSearch(p => p.q === q ? { q, loading: false, error: "", results: data.packages || [] } : p);
+        } catch (err) {
+          setPkgSearch(p => p.q === q ? { q, loading: false, error: "Couldn't search packages (" + (err.message || err) + "). Use Upload File instead.", results: null } : p);
+        }
+      };
+      const loadPackage = async (pkg) => {
+        setPdfParsing(true);
+        try {
+          const res = await fetch(pkg.url);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const name = /\.pdf$/i.test(pkg.name || "") ? pkg.name : "package.pdf";
+          setPkgSearch(null);
+          await importFile(new File([await res.blob()], name, { type: "application/pdf" }));
+        } catch (err) {
+          alert("Couldn't download that package (" + (err.message || err) + "). Search again, or use Upload File.");
+          setPdfParsing(false);
+        }
+      };
+
+      const importFile = async (file) => {
         if (!file) return;
 
         setPdfParsing(true);
@@ -6070,12 +6100,57 @@
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>Import Job File</div>
                   <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Auto-fills customer, address, trim, and all units</div>
                 </div>
-                <button onClick={() => pdfInputRef.current.click()} disabled={pdfParsing} style={{
-                  padding: "10px 18px", border: "none", borderRadius: 6,
-                  background: "#6DB344", fontSize: 14, fontWeight: 700,
-                  color: "#fff", cursor: pdfParsing ? "wait" : "pointer", flexShrink: 0
-                }}>{pdfParsing ? "Extracting..." : "Upload File"}</button>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button onClick={() => pdfInputRef.current.click()} disabled={pdfParsing} style={{
+                    padding: "10px 14px", border: "1px solid #CCC", borderRadius: 6,
+                    background: "#fff", fontSize: 14, fontWeight: 600,
+                    color: "#555", cursor: pdfParsing ? "wait" : "pointer"
+                  }}>Upload File</button>
+                  <button onClick={() => pkgSearch ? setPkgSearch(null) : searchPackages("")} disabled={pdfParsing} style={{
+                    padding: "10px 18px", border: "none", borderRadius: 6,
+                    background: "#6DB344", fontSize: 14, fontWeight: 700,
+                    color: "#fff", cursor: pdfParsing ? "wait" : "pointer"
+                  }}>{pdfParsing ? "Extracting..." : "Find Package"}</button>
+                </div>
               </div>
+              {pkgSearch && (
+                <div style={{ marginTop: 12 }}>
+                  <form onSubmit={(e) => { e.preventDefault(); searchPackages(e.target.elements.q.value.trim()); }} style={{ display: "flex", gap: 8 }}>
+                    <input name="q" autoFocus defaultValue={pkgSearch.q} placeholder="Customer name or PO number" autoComplete="off" style={{
+                      flex: 1, padding: "10px 12px", border: "1px solid #CCC", borderRadius: 6, fontSize: 15
+                    }} />
+                    <button type="submit" style={{
+                      padding: "10px 16px", border: "1px solid #6DB344", borderRadius: 6,
+                      background: "#fff", fontSize: 14, fontWeight: 700, color: "#4E8A2E", cursor: "pointer"
+                    }}>Search</button>
+                  </form>
+                  {pkgSearch.loading && <div style={{ fontSize: 13, color: "#888", marginTop: 10 }}>Searching…</div>}
+                  {pkgSearch.error && <div style={{ fontSize: 13, color: "#B45309", marginTop: 10 }}>{pkgSearch.error}</div>}
+                  {pkgSearch.results && pkgSearch.results.length === 0 && (
+                    <div style={{ fontSize: 13, color: "#888", marginTop: 10 }}>
+                      No package on file{pkgSearch.q ? ` for "${pkgSearch.q}"` : ""}. If it was only just sent it may not be filed yet — use Upload File.
+                    </div>
+                  )}
+                  {pkgSearch.results && pkgSearch.results.length > 0 && (
+                    <div style={{ marginTop: 10, border: "1px solid #E8E8E8", borderRadius: 6, maxHeight: 320, overflowY: "auto" }}>
+                      {!pkgSearch.q && <div style={{ fontSize: 11, fontWeight: 700, color: "#888", padding: "8px 12px 0", letterSpacing: 0.5 }}>MOST RECENT PACKAGES</div>}
+                      {pkgSearch.results.map(p => (
+                        <button key={p.id} onClick={() => loadPackage(p)} disabled={pdfParsing} style={{
+                          display: "block", width: "100%", textAlign: "left", padding: "10px 12px",
+                          border: "none", borderBottom: "1px solid #F0F0F0", background: "#fff", cursor: "pointer"
+                        }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "#333" }}>
+                            {p.customerName || p.name}{p.city ? " — " + p.city : ""}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                            {[p.poNumber, p.customerName ? p.name : "", "filed " + new Date(p.uploadedAt).toLocaleDateString(), p.matched ? "" : "not yet matched to a job"].filter(Boolean).join(" · ")}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <input ref={pdfInputRef} type="file" accept=".pdf,.json,.zip,.csv" onChange={handleFileUpload} style={{ display: "none" }} />
             </div>
 
