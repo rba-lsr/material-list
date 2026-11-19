@@ -46,8 +46,9 @@ PDFs, and the Truck Report. Used daily by the field and the warehouse.
   Center. Raise this with Matt when working on imports or Find Package.
 - **`/api/packages` has no login (2026-11-19).** Like the app's other
   endpoints, anyone with the address can search packages and get short-lived
-  links to PDFs that hold customer addresses and phone numbers. Waiting on
-  Matt's choice of how to lock it.
+  links to PDFs that hold customer addresses and phone numbers. Matt wants to
+  build the lock-down on Monday 2026-11-23, when everyone is in, so he can
+  tell the team the same day. Still to decide: team code or Microsoft sign-in.
 
 ## Run locally
 `cd pwa-app && netlify dev` serves the page AND the functions (local blob
