@@ -1133,7 +1133,10 @@
     // are mulled into a single opening that is trimmed once. Merge a group only
     // when the layout is unambiguous: equal heights = side by side (widths add),
     // equal widths = stacked (heights add). Anything else is left as separate
-    // units for the tech to sort out. No allowance is added for the mull joint.
+    // units for the tech to sort out. Each joint between parts adds the mull:
+    // 1/2" between windows; doors vary up to 3/4", so a group with a door uses
+    // 3/4" (trim cut long can be trimmed, short can't). Shop-built custom mulls
+    // are rare and get fixed by hand in the review.
     function combineComboUnits(units) {
       const groups = new Map();
       units.forEach(u => {
@@ -1156,6 +1159,9 @@
         if (same(hs)) { w = sum(ws); h = Math.max(...hs); }
         else if (same(ws)) { w = Math.max(...ws); h = sum(hs); }
         else { out.push(...g); return; }
+        const hasDoor = g.some(x => x.unitType !== "Window");
+        const mull = (hasDoor ? 0.75 : 0.5) * (g.length - 1);
+        if (same(hs)) w += mull; else h += mull;
         const jd = g.find(x => x.jambDepthWhole != null);
         out.push({
           ...g[0],
@@ -1165,6 +1171,7 @@
           heightWhole: Math.floor(h), heightFrac: h - Math.floor(h),
           jambDepthWhole: jd ? jd.jambDepthWhole : null, jambDepthFrac: jd ? jd.jambDepthFrac : null,
           combinedFrom: g.map(x => x.label).join(" + "),
+          mullNote: (g.length > 2 ? (g.length - 1) + " joints at " : "") + (hasDoor ? '3/4"' : '1/2"') + " added for the mull",
         });
       });
       return out;
@@ -7588,7 +7595,7 @@
                       </div>
                       {u.combinedFrom && (
                         <div style={{ fontSize: 12, color: "#B45309", marginTop: 6, fontWeight: 600 }}>
-                          Combination unit: {u.combinedFrom} joined into one opening. Check the overall size.
+                          Combination unit: {u.combinedFrom} joined into one opening, {u.mullNote}. Check the overall size.
                         </div>
                       )}
                     </div>

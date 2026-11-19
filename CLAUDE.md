@@ -21,8 +21,10 @@ PDFs, and the Truck Report. Used daily by the field and the warehouse.
   delete a store or "reset" the site — there is no other copy. To inspect:
   `NETLIFY_SITE_ID=f979f1d5-307f-412d-a7ca-fd97486444dc netlify blobs:list jobs --json`.
 - Combination units ("101A" + "101B") import as one opening when the layout
-  is unambiguous: equal heights add widths, equal widths add heights, with no
-  allowance for the mull joint. The review screen has a checkbox to keep them
+  is unambiguous: equal heights add widths, equal widths add heights, plus a
+  mull allowance per joint: 1/2" between windows, 3/4" when any part is a door
+  (doors vary up to 3/4"; Matt 2026-11-19). Custom shop-built mulls are rare
+  and corrected by hand. The review screen has a checkbox to keep them
   separate. Anything else stays as separate units.
 - Netlify site `rba-material-list` → https://rbamateriallist.com, deploys every
   push to `main`. The root `netlify.toml` sets `base = "pwa-app"` so Netlify
