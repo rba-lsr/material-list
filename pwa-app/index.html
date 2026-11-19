@@ -739,7 +739,7 @@
           r.forEach((name, i) => { const k = name.toLowerCase().replace(/\s+/g, " ").trim(); if (k && !(k in cols)) cols[k] = i; });
           continue;
         }
-        if (!cols || !/^\d{1,4}[Ss]?$/.test(first)) continue;
+        if (!cols || !/^\d{1,4}[A-Za-z]?$/.test(first)) continue; // letter = storm door ("S") or combination-unit part ("101A")
         const uid = first;
         if (/[Ss]$/.test(uid)) continue; // storm door — no trim
         const idNum = parseInt(uid, 10);
@@ -820,8 +820,9 @@
       if (poM) jobInfo.poNumber = poM[1].toUpperCase();
 
       // --- Units ---
-      // Unit IDs are 3-digit numbers at the start of a line (001–899, "S" suffix = storm door)
-      const idPat = /(?:^|\n)[ \t]*(\d{3}[Ss]?)\b/g;
+      // Unit IDs are 3-digit numbers at the start of a line (001–899, "S" suffix = storm door,
+      // other letters = the parts of a combination unit: "101A", "101B")
+      const idPat = /(?:^|\n)[ \t]*(\d{3}[A-Za-z]?)\b/g;
       const FRAC = '(\\d+(?:[-\\s]\\d+\\/\\d+)?)';
       // Labeled sizes ('37-9/16" W  81-1/2" H' or '37 9/16" W x 81 1/2" H') are unambiguous
       // and carry the measured size — always prefer them.
