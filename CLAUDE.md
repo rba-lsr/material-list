@@ -20,6 +20,11 @@ PDFs, and the Truck Report. Used daily by the field and the warehouse.
   list. Results flag jobs that already have a material list on file. Never
   delete a store or "reset" the site — there is no other copy. To inspect:
   `NETLIFY_SITE_ID=f979f1d5-307f-412d-a7ca-fd97486444dc netlify blobs:list jobs --json`.
+- The Truck Report's "Printed" tick is the joblist's own (`jobs.ml_printed_at`,
+  the same one its Material Lists board shows): the truck-report feed returns
+  it as `printedAt` and `truck-printed` (`POST /api/truck-printed`) sets or
+  clears it through the joblist's `material-printed` function. Nothing about
+  printed is stored on the device any more.
 - Combination units ("101A" + "101B") import as one opening when the layout
   is unambiguous: equal heights add widths, equal widths add heights, plus a
   mull allowance per joint: 1/2" between windows, 3/4" when any part is a door
